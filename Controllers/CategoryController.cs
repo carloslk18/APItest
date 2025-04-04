@@ -1,5 +1,6 @@
 using Bteste.Data;
 using Bteste.Models;
+using BTeste.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Client;
@@ -30,19 +31,36 @@ public class CategoryController:ControllerBase{
 
     [HttpPost("v1/categories")]
     public async Task<IActionResult> PostAsync(
-        [FromBody] Category model,
+        [FromBody]EditorCategoryViewModel model,
         [FromServices] BlogDataContext context){
         
-        await context.Categories.AddAsync(model);
-        await context.SaveChangesAsync();
+        try{
 
-        return Created($"v1/categories/{model.Id}", model);
+            var category = new Category
+            {
+                Id = 0,
+                Posts = [],
+                Name = model.Name,
+                Slug = model.Slug
+            };
+
+            await context.Categories.AddAsync(category);
+            await context.SaveChangesAsync();
+
+            return Created($"v1/categories/{category.Id}", model);
+        }
+        catch (DbUpdateException ex){
+            return StatusCode(500,"Cannot was possible to include value");
+        }
+        catch (Exception ex){
+            return StatusCode( 500);
+        }
     }
 
     [HttpPut("v1/categories/{id:int}")]
     public async Task<IActionResult> PutAsync(
         [FromRoute] int id,
-        [FromBody] Category model,
+        [FromBody] EditorCategoryViewModel model,
         [FromServices] BlogDataContext context){
         
         var category = await context.Categories.FirstOrDefaultAsync(x=>x.Id == id);
@@ -53,7 +71,25 @@ public class CategoryController:ControllerBase{
         category.Name = model.Name;
         category.Slug = model.Slug;
 
+        context.Categories.Update(category);
+        await context.SaveChangesAsync();
+        return Ok(model);
+    }
+
+    [HttpDelete("v1/categories/{id:int}")]
+    public async Task<IActionResult> DeleteAsync(
+        [FromRoute] int id,
+        [FromServices] BlogDataContext context){
+        
+        var category = await context.Categories.FirstOrDefaultAsync(x=>x.Id == id);
+        if(category == null){
+            return NotFound();
+        }
+
+        context.Categories.Remove(category);
+        await context.SaveChangesAsync();
         return Ok(category);
     }
+
 }
 }
