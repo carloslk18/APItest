@@ -1,5 +1,6 @@
 using Bteste.Data;
 using Bteste.Models;
+using BTeste.Extensions;
 using BTeste.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,7 +14,7 @@ public class CategoryController:ControllerBase{
         [FromServices] BlogDataContext context){
         
         var categories = await context.Categories.ToListAsync();
-        return Ok(categories);
+        return Ok(new ResultViewModel<List<Category>>(categories));
     }
 
     [HttpGet("v1/categories/{id:int}")]
@@ -21,18 +22,27 @@ public class CategoryController:ControllerBase{
         [FromRoute] int id,
         [FromServices] BlogDataContext context){
         
-        var category = await context.Categories.FirstOrDefaultAsync(x=>x.Id == id);
-        if(category == null){
-            return NotFound();
-        }
+        try{
+            var category = await context.Categories.FirstOrDefaultAsync(x=>x.Id == id);
+            if(category == null){
+                return NotFound(new ResultViewModel<Category>("Category not found"));
+            }
 
-        return Ok(category);
+            return Ok(category);
+        }
+        catch (Exception ex){
+            return StatusCode(500, new ResultViewModel<Category>("Internal error"));
+        }
     }
 
     [HttpPost("v1/categories")]
     public async Task<IActionResult> PostAsync(
         [FromBody]EditorCategoryViewModel model,
         [FromServices] BlogDataContext context){
+
+            if(!ModelState.IsValid){
+                return BadRequest(ModelState.GetErrors());
+            }
         
         try{
 
